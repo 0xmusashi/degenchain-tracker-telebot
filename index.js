@@ -26,7 +26,8 @@ const {
     ADMIN_IDS,
     DEXSCREENER_API_ENDPOINT,
     ADDRESS_ZERO,
-    CHART_URL
+    CHART_URL,
+    THRESHOLD
 } = require('./constants');
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
@@ -68,36 +69,36 @@ async function main() {
                 let formatAmount1Out = parseFloat(ethers.utils.formatUnits(amount1Out));
 
                 let tokenAmount;
-                let wbtcAmount;
+                let quoteTokenAmount;
 
                 if (formatAmount0In > 0 && formatAmount1In == 0) {
                     if (formatAmount0In > formatAmount1Out) {
                         isBuy = false;
                         tokenAmount = formatAmount0In;
-                        wbtcAmount = formatAmount1Out;
+                        quoteTokenAmount = formatAmount1Out;
                     } else {
                         isBuy = true;
                         tokenAmount = formatAmount1Out;
-                        wbtcAmount = formatAmount0In;
+                        quoteTokenAmount = formatAmount0In;
                     }
                 } else if (formatAmount0In == 0 && formatAmount1In > 0) {
                     if (formatAmount1In > formatAmount0Out) {
                         isBuy = false;
                         tokenAmount = formatAmount1In;
-                        wbtcAmount = formatAmount0Out;
+                        quoteTokenAmount = formatAmount0Out;
                     } else {
                         isBuy = true;
                         tokenAmount = formatAmount0Out;
-                        wbtcAmount = formatAmount1In;
+                        quoteTokenAmount = formatAmount1In;
                     }
                 }
                 console.log('Swapped: ', event.transactionHash);
                 const reserves = await contract.getReserves();
                 const reserve0 = ethers.utils.formatUnits(reserves[0].toString());
                 const reserve1 = ethers.utils.formatUnits(reserves[1].toString());
-                const wbtcReserve = token0.toString().toLowerCase() == QUOTE_TOKEN_ADDRESS ? reserve0 : reserve1;
+                const quoteTokenReserve = token0.toString().toLowerCase() == QUOTE_TOKEN_ADDRESS ? reserve0 : reserve1;
                 const tokenReserve = token0.toString().toLowerCase() == tokenAddress ? reserve0 : reserve1;
-                await sendAlert(isBuy, tokenAmount, wbtcAmount, event.transactionHash, tokenReserve, wbtcReserve, symbol, totalSupply.toString(), pairContractAddress);
+                await sendAlert(isBuy, tokenAmount, quoteTokenAmount, event.transactionHash, tokenReserve, quoteTokenReserve, symbol, totalSupply.toString(), pairContractAddress);
 
             } catch (err) {
                 console.log('error: ', err);
@@ -106,19 +107,19 @@ async function main() {
     }
 }
 
-async function sendAlert(isBuy, tokenAmount, wbtcAmount, txHash, tokenReserve, wbtcReserve, symbol, totalSupply, pairContractAddress) {
+async function sendAlert(isBuy, tokenAmount, quoteTokenAmount, txHash, tokenReserve, quoteTokenReserve, symbol, totalSupply, pairContractAddress) {
     const buySellMsg = isBuy ? 'Buy' : 'Sell';
-    const inAmount = isBuy ? wbtcAmount : tokenAmount;
-    const outAmount = isBuy ? tokenAmount : wbtcAmount;
+    const inAmount = isBuy ? quoteTokenAmount : tokenAmount;
+    const outAmount = isBuy ? tokenAmount : quoteTokenAmount;
     const inSymbol = isBuy ? QUOTE_TOKEN_SYMBOL : `$${symbol.toUpperCase()}`;
     const outSymbol = isBuy ? `$${symbol.toUpperCase()}` : QUOTE_TOKEN_SYMBOL;
 
     const response = await axios.get(`${DEXSCREENER_API_ENDPOINT}${QUOTE_TOKEN_DEXSCREENER_ADDRESS}`);
     const pair = response.data.pairs[0];
     const currentBtcPrice = parseFloat(pair.priceUsd);
-    const wbtcPriceUsd = wbtcAmount * currentBtcPrice;
+    const quoteTokenPriceUsd = quoteTokenAmount * currentBtcPrice;
 
-    const numberEmojies = parseInt(wbtcPriceUsd / 10);
+    const numberEmojies = parseInt(quoteTokenPriceUsd / 10);
     let emojiString = '';
     if (isBuy) {
         emojiString = BUY_EMOJI + BUY_EMOJI.repeat(numberEmojies);
@@ -126,8 +127,8 @@ async function sendAlert(isBuy, tokenAmount, wbtcAmount, txHash, tokenReserve, w
         emojiString = SELL_EMOJI + SELL_EMOJI.repeat(numberEmojies);
     }
 
-    const tokenPrice = parseFloat(wbtcReserve) * currentBtcPrice / parseFloat(tokenReserve);
-    const liquidity = parseFloat(wbtcReserve) * currentBtcPrice * 2;
+    const tokenPrice = parseFloat(quoteTokenReserve) * currentBtcPrice / parseFloat(tokenReserve);
+    const liquidity = parseFloat(quoteTokenReserve) * currentBtcPrice * 2;
 
     const marketCap = parseFloat(ethers.utils.formatUnits(totalSupply)) * tokenPrice;
 
@@ -136,13 +137,13 @@ async function sendAlert(isBuy, tokenAmount, wbtcAmount, txHash, tokenReserve, w
     if (isBuy) {
         message = `<b>New $${symbol.toUpperCase()} ${buySellMsg}!</b>\n\n` +
             `${emojiString}\n\n` +
-            `<b>💲 Spent ${formatNumber(parseFloat(inAmount.toFixed(5)))} ${inSymbol} ($${wbtcPriceUsd.toFixed(2)})</b>\n\n` +
+            `<b>💲 Spent ${formatNumber(parseFloat(inAmount.toFixed(5)))} ${inSymbol} ($${quoteTokenPriceUsd.toFixed(2)})</b>\n\n` +
             `<b>💰 Got: ${formatNumber(parseFloat(outAmount.toFixed(5)))} ${outSymbol}</b>\n\n`;
     } else {
         message = `<b>New $${symbol.toUpperCase()} ${buySellMsg}!</b>\n\n` +
             `${emojiString}\n\n` +
             `<b>💲 Spent ${formatNumber(parseFloat(inAmount.toFixed(5)))} ${inSymbol}</b>\n\n` +
-            `<b>💰 Got: ${formatNumber(parseFloat(outAmount.toFixed(5)))} ${outSymbol} ($${wbtcPriceUsd.toFixed(2)})</b>\n\n`;
+            `<b>💰 Got: ${formatNumber(parseFloat(outAmount.toFixed(5)))} ${outSymbol} ($${quoteTokenPriceUsd.toFixed(2)})</b>\n\n`;
     }
 
     message += `<b>🏷️ Price: $${tokenPrice.toFixed(12)}</b>\n\n` +
@@ -153,9 +154,12 @@ async function sendAlert(isBuy, tokenAmount, wbtcAmount, txHash, tokenReserve, w
     const opts = {
         parse_mode: 'HTML',
     }
-    for (const chatId of CHAT_IDS) {
-        await bot.sendMessage(chatId, message, opts);
+    if (quoteTokenPriceUsd >= THRESHOLD) {
+        for (const chatId of CHAT_IDS) {
+            await bot.sendMessage(chatId, message, opts);
+        }
     }
+
 }
 
 bot.onText(/\/contract (.+)/, async (msg, match) => {

@@ -1,12 +1,12 @@
 require('dotenv').config();
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const RPC_URL = process.env.RPC_URL;
-const FACTORY_CONTRACT_ADDRESS = process.env.FACTORY_CONTRACT_ADDRESS;
-const QUOTE_TOKEN_ADDRESS = process.env.QUOTE_TOKEN_ADDRESS.toString().toLowerCase();
+const RPC_URL = "https://rpc.degen.tips";
+const FACTORY_CONTRACT_ADDRESS = "0xA5E57CaB76caa09F66280F9Eb1529ed1059E87ba";
+const QUOTE_TOKEN_ADDRESS = "0xeb54dacb4c2ccb64f8074eceea33b5ebb38e5387";
 const QUOTE_TOKEN_SYMBOL = '$WDEGEN';
 
-const DEXSCREENER_API_ENDPOINT = process.env.DEXSCREENER_API_ENDPOINT;
+const DEXSCREENER_API_ENDPOINT = "https://api.dexscreener.com/latest/dex/tokens/";
 
 const TX_EXPLORER_URL = 'https://explorer.degen.tips/tx/';
 const CHART_URL = 'https://dexscreener.com/degenchain/';
@@ -21,6 +21,7 @@ const CHAT_IDS = [1559803968, 2127544523, -1002020318135];
 const ADMIN_IDS = [1559803968, 2127544523];
 
 const ADDRESS_ZERO = "0x0000000000000000000000000000000000000000";
+const THRESHOLD = 500;
 
 module.exports = {
     TELEGRAM_BOT_TOKEN,
@@ -38,5 +39,6 @@ module.exports = {
     CHAT_IDS,
     ADMIN_IDS,
     ADDRESS_ZERO,
-    CHART_URL
+    CHART_URL,
+    THRESHOLD
 }
