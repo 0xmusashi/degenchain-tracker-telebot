@@ -142,7 +142,7 @@ async function sendAlert(isBuy, tokenAmount, quoteTokenAmount, txHash, tokenRese
     } else {
         message = `<b>New $${symbol.toUpperCase()} ${buySellMsg}!</b>\n\n` +
             `${emojiString}\n\n` +
-            `<b>💲 Spent ${formatNumber(parseFloat(inAmount.toFixed(5)))} ${inSymbol}</b>\n\n` +
+            `<b>💲 Sold ${formatNumber(parseFloat(inAmount.toFixed(5)))} ${inSymbol}</b>\n\n` +
             `<b>💰 Got: ${formatNumber(parseFloat(outAmount.toFixed(5)))} ${outSymbol} ($${quoteTokenPriceUsd.toFixed(2)})</b>\n\n`;
     }
 
